@@ -1,0 +1,28 @@
+fecha: 2026-11-17T15:25:30.5582680-06:00
+commit: ed36508f4e6a4323f82b1b41a1720bcfc21a2566
+modelo: gemini-3.5-flash-lite
+comando: npm.cmd run compare
+---
+> ai-support-engine@1.0.0 compare
+> node --env-file-if-exists=.env scripts/compare.js
+
+Evaluando traditional: 12 solicitudes reales al motor.
+Evaluando generative: 12 solicitudes reales al motor.
+{
+  "traditional": {
+    "total": 12,
+    "completed": 12,
+    "failures": 0,
+    "correct": 12,
+    "accuracyPercent": 100
+  },
+  "generative": {
+    "total": 12,
+    "completed": 12,
+    "failures": 0,
+    "correct": 7,
+    "accuracyPercent": 58.33
+  }
+}
+Evidencia guardada en results/.
+
