@@ -1,0 +1,23 @@
+fecha: 2026-11-17T15:24:15.0899565-06:00
+commit: ed36508f4e6a4323f82b1b41a1720bcfc21a2566
+modelo: gemini-3.5-flash-lite
+---
+comando: Invoke-WebRequest -Uri http://127.0.0.1:3000/api/analyze -Method Post -ContentType 'application/json; charset=utf-8' -Body '{"message":"No puedo iniciar sesión","mode":"generative"}'
+HTTP 200
+{
+    "category":  "ACCESS",
+    "priority":  "MEDIUM",
+    "response":  "Hemos recibido su reporte sobre problemas para iniciar sesión. Por favor, verifique que sus credenciales sean correctas o utilice la opción de recuperación de contraseña. Si el inconveniente persiste, un especialista se pondrá en contacto con usted.",
+    "requiresHumanReview":  true,
+    "mode":  "generative"
+}
+---
+comando: Invoke-WebRequest -Uri http://127.0.0.1:3000/api/analyze -Method Post -ContentType 'application/json; charset=utf-8' -Body '{"message":"Detecté una vulnerabilidad","mode":"generative"}'
+HTTP 200
+{
+    "category":  "SECURITY",
+    "priority":  "HIGH",
+    "response":  "Hemos recibido su reporte sobre una posible vulnerabilidad. Para poder analizar el caso adecuadamente, por favor proporcione más detalles sobre el hallazgo de forma segura. Este asunto requiere revisión humana.",
+    "requiresHumanReview":  true,
+    "mode":  "generative"
+}
