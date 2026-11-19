@@ -17,9 +17,15 @@ function element(tag, text, className) {
   return node;
 }
 
+const TITLES = {
+  traditional: 'Motor tradicional',
+  generative: 'Motor generativo',
+  ml: 'Motor Machine Learning',
+};
+
 async function analyze(mode, text) {
   const card = element('article', undefined, 'result');
-  const title = mode === 'traditional' ? 'Motor tradicional' : 'Motor generativo';
+  const title = TITLES[mode] || mode;
   card.append(element('h2', title), element('p', 'Analizando…', 'loading'));
   results.append(card);
   const started = performance.now();
@@ -39,6 +45,7 @@ async function analyze(mode, text) {
     card.classList.add('error');
     card.replaceChildren(element('h2', title), element('p', error.message));
     if (mode === 'generative') card.append(element('p', 'Revisa la configuración de Gemini en el servidor según el README. El motor tradicional sigue disponible.'));
+    if (mode === 'ml') card.append(element('p', 'Instale dependencias Python (requirements-ml.txt) y ejecute python scripts/train_ml.py.'));
   }
 }
 
@@ -49,7 +56,10 @@ form.addEventListener('submit', async event => {
   results.setAttribute('aria-busy', 'true');
   results.replaceChildren();
   const mode = document.querySelector('#mode').value;
-  await Promise.all((mode === 'both' ? ['traditional', 'generative'] : [mode]).map(value => analyze(value, message.value)));
+  const selected = mode === 'all' ? ['traditional', 'ml', 'generative']
+    : mode === 'both' ? ['traditional', 'generative']
+      : [mode];
+  await Promise.all(selected.map(value => analyze(value, message.value)));
   submit.disabled = false;
   results.setAttribute('aria-busy', 'false');
 });

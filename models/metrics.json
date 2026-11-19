@@ -1,0 +1,17 @@
+{
+  "rows": 53,
+  "train": 42,
+  "test": 11,
+  "categories": [
+    "ACCESS",
+    "BUG",
+    "FEATURE",
+    "SECURITY"
+  ],
+  "model_path": "models/category_pipeline.joblib",
+  "sample_prediction": {
+    "message": "Alguien entró a mi cuenta sin autorización",
+    "category": "SECURITY"
+  },
+  "classification_report": "              precision    recall  f1-score   support\n\n      ACCESS       0.75      1.00      0.86         3\n         BUG       1.00      0.33      0.50         3\n     FEATURE       0.00      0.00      0.00         2\n    SECURITY       0.33      0.67      0.44         3\n\n    accuracy                           0.55        11\n   macro avg       0.52      0.50      0.45        11\nweighted avg       0.57      0.55      0.49        11\n"
+}
