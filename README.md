@@ -1,11 +1,12 @@
 # AI Support Engine
 
-Prototipo funcional para clasificar solicitudes de soporte con dos enfoques: reglas tradicionales y un modelo generativo real mediante Gemini API. Incluye API HTTP, interfaz web, pruebas independientes y 12 casos comparativos con referencias definidas antes de la evaluación. No requiere Ollama ni descargar modelos.
+Prototipo funcional para clasificar solicitudes de soporte con tres enfoques: reglas tradicionales, Machine Learning supervisado (TF-IDF + Logistic Regression) y un modelo generativo real mediante Gemini API. Incluye API HTTP, interfaz web, pruebas independientes y 12 casos comparativos con referencias definidas antes de la evaluación.
 
 ## Requisitos
 
 - Node.js 22.9 o superior (verifique con `node --version`).
 - Internet y una clave de Gemini API para el modo generativo. El tradicional funciona sin clave y sin internet.
+- Para el modo `ml`: Python 3, dependencias de `requirements-ml.txt`, y ejecutar el entrenamiento una vez (`npm run ml:train`).
 - No hay dependencias npm externas. La disponibilidad de modelos, cuotas y posibles cargos depende de la cuenta y configuración de Google AI Studio; revise su panel antes de usar la API.
 
 ## Inicio en Windows
@@ -26,11 +27,29 @@ notepad .env
 npm.cmd start
 ```
 
-Abra <http://127.0.0.1:3000>. Seleccione «Generativo · Gemini» o «Comparar ambos motores». Después de modificar `.env`, reinicie el servidor. Las antiguas variables `OLLAMA_*` ya no se utilizan; si conserva un `.env` de la versión anterior, añada las nuevas variables de `.env.example` sin sobrescribir otras configuraciones.
+Abra <http://127.0.0.1:3000>. Seleccione tradicional, Machine Learning, generativo o comparar. Después de modificar `.env`, reinicie el servidor. Las antiguas variables `OLLAMA_*` ya no se utilizan; si conserva un `.env` de la versión anterior, añada las nuevas variables de `.env.example` sin sobrescribir otras configuraciones.
 
 Si PowerShell bloquea `npm.ps1`, utilice `npm.cmd start`, `npm.cmd test` y `npm.cmd run compare`. No es necesario cambiar la política de ejecución del equipo. Detenga el servidor con Ctrl+C.
 
 Puede iniciar el prototipo antes de configurar Gemini. El modo tradicional estará disponible y el generativo mostrará `MISSING_API_KEY`, sin simular respuestas. La clave se utiliza sólo en el servidor, en una cabecera HTTPS destinada a Google; no se entrega a la interfaz web ni se incluye en la URL.
+
+## Motor Machine Learning (corrección del profesor)
+
+Integra el enfoque supervisado con CSV de exactamente dos columnas (`Mensaje`, `Categoría`), como indicó el profesor. El proyecto principal sigue en Node (opción B): Python entrena/predice y la API lo consume.
+
+```powershell
+python -m pip install -r requirements-ml.txt
+npm.cmd run ml:train
+python scripts/predict_ml.py "Alguien entró a mi cuenta sin autorización"
+```
+
+Luego, con el servidor en marcha:
+
+```json
+{ "message": "Alguien entró a mi cuenta sin autorización", "mode": "ml" }
+```
+
+El modelo predice `category`. Prioridad, respuesta plantilla y `requiresHumanReview` se completan en `src/ml.js` para cumplir el mismo contrato JSON. Dataset: `data/tickets.csv`. Modelo: `models/category_pipeline.joblib`. Guía corta del equipo: [`docs/PARA-EL-EQUIPO-ML.md`](docs/PARA-EL-EQUIPO-ML.md).
 
 ## Uso de la API
 
@@ -50,7 +69,7 @@ Puede iniciar el prototipo antes de configurar Gemini. El modo tradicional estar
 }
 ```
 
-Para consultar el modelo real, envíe `mode: "generative"`. Ambos motores exportan `analyze(message)`; el tradicional es síncrono y el generativo devuelve una promesa. Las únicas categorías son ACCESS, BUG, FEATURE y SECURITY; prioridades LOW, MEDIUM, HIGH y CRITICAL. `GET /api/health` comprueba el servidor, no la disponibilidad del modelo.
+Para consultar el modelo real, envíe `mode: "generative"`. Para Machine Learning, `mode: "ml"` (requiere entrenamiento previo). Los tres motores exportan `analyze(message)` y cumplen el mismo contrato. Las únicas categorías son ACCESS, BUG, FEATURE y SECURITY; prioridades LOW, MEDIUM, HIGH y CRITICAL. `GET /api/health` comprueba el servidor, no la disponibilidad del modelo ni de Gemini.
 
 Ejemplo en PowerShell:
 
@@ -76,11 +95,14 @@ La exactitud exige contrato válido y coincidencia de categoría, prioridad y re
 
 - Dana: `src/traditional.js` y `tests/traditional.test.cjs` (conservados).
 - Motor generativo: `src/generative.js`; instrucciones del sistema, esquema JSON y consulta HTTPS real a `generateContent` de Gemini.
+- Motor ML: `data/tickets.csv`, `scripts/train_ml.py`, `scripts/predict_ml.py`, `src/ml.js` (integración Node ↔ Python).
 - API e integración: `src/server.js`, `src/contract.js`, `public/`, `scripts/compare.js` y pruebas adicionales.
 
 ## Decisiones y límites
 
 El motor tradicional normaliza acentos, espacios y mayúsculas. Usa precedencia SECURITY > ACCESS > BUG > FEATURE. ACCESS/BUG suelen ser MEDIUM, mejoras LOW, bloqueos y seguridad HIGH, pérdidas/fugas de datos y caídas generales CRITICAL. Sin contexto devuelve BUG/MEDIUM provisional y revisión humana. No interpreta toda negación o ironía.
+
+El motor ML lee un CSV (`Mensaje`, `Categoría`), entrena TF-IDF + Logistic Regression y predice solo la categoría. No reemplaza a Gemini ni a las reglas: es un tercer modo. Con pocos datos el accuracy puede variar; el dataset incluido es didáctico, no un corpus de producción. SECURITY del ML también marca revisión humana.
 
 El generativo separa instrucciones del sistema y ticket no confiable, solicita un esquema JSON y valida los cinco campos en la respuesta. Rechaza respuestas truncadas, bloqueadas o mal formadas. Una defensa de reglas evita que señales conocidas de seguridad se desescalen: SECURITY siempre requiere revisión y mínimo HIGH. Esta defensa no sustituye la generación: si Gemini falla, la solicitud falla. La respuesta profesional procede del modelo, cuya calidad puede variar; las reglas no detectan todos los incidentes ni garantizan resistencia absoluta a manipulación.
 

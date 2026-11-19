@@ -5,7 +5,9 @@ const { readFile } = require('node:fs/promises');
 const path = require('node:path');
 const traditional = require('./traditional');
 const generative = require('./generative');
+const ml = require('./ml');
 const { validateMessage, validResult } = require('./contract');
+const MODES = ['traditional', 'generative', 'ml'];
 
 const assets = {
   '/': ['index.html', 'text/html; charset=utf-8'],
@@ -18,7 +20,16 @@ function send(res, status, value) {
   res.end(JSON.stringify(value));
 }
 
-function createServer({ traditionalAnalyze = traditional.analyze, generativeAnalyze = generative.analyze } = {}) {
+function createServer({
+  traditionalAnalyze = traditional.analyze,
+  generativeAnalyze = generative.analyze,
+  mlAnalyze = ml.analyze,
+} = {}) {
+  const engines = {
+    traditional: traditionalAnalyze,
+    generative: generativeAnalyze,
+    ml: mlAnalyze,
+  };
   return http.createServer(async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Cache-Control', 'no-store');
@@ -50,17 +61,19 @@ function createServer({ traditionalAnalyze = traditional.analyze, generativeAnal
       try { input = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
       catch { return send(res, 400, { error: { code: 'INVALID_JSON', message: 'El cuerpo debe ser JSON válido.' } }); }
       if (!input || typeof input !== 'object' || Array.isArray(input)
-        || !['traditional', 'generative'].includes(input.mode)
+        || !MODES.includes(input.mode)
         || Object.keys(input).some(key => !['message', 'mode'].includes(key))) {
-        return send(res, 400, { error: { code: 'INVALID_REQUEST', message: 'Envíe únicamente message y mode (traditional o generative).' } });
+        return send(res, 400, { error: { code: 'INVALID_REQUEST', message: 'Envíe únicamente message y mode (traditional, generative o ml).' } });
       }
       validateMessage(input.message);
-      const result = await (input.mode === 'traditional' ? traditionalAnalyze : generativeAnalyze)(input.message);
+      const result = await engines[input.mode](input.message);
       if (!validResult(result, input.mode)) throw new generative.ProviderError('INVALID_ENGINE_OUTPUT', 'El motor no cumplió el contrato.');
       return send(res, 200, result);
     } catch (error) {
       if (error instanceof TypeError) return send(res, 400, { error: { code: 'INVALID_REQUEST', message: error.message } });
-      if (error instanceof generative.ProviderError) return send(res, error.status, { error: { code: error.code, message: error.message } });
+      if (error instanceof generative.ProviderError || error instanceof ml.MlError) {
+        return send(res, error.status, { error: { code: error.code, message: error.message } });
+      }
       return send(res, 500, { error: { code: 'INTERNAL_ERROR', message: 'No fue posible procesar la solicitud.' } });
     }
   });

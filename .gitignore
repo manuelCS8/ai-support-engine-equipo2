@@ -18,3 +18,4 @@ Thumbs.db
 .idea/
 
 # Nota: evidence/ y results/ SÍ se suben; son entregables.
+# El modelo ML entrenado (.joblib) y metrics.json SÍ se pueden subir para demo.
