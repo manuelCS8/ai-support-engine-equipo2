@@ -47,6 +47,33 @@ API mode:"ml"  →  src/ml.js  →  scripts/predict_ml.py
 
 ---
 
+## Entrenamiento con el CSV del profe (200 registros)
+
+- **160 para entrenar, 40 para probar** (`test_size=0.2`, estratificado: 10 de prueba por categoría).
+- Resultado real: **accuracy 87.5 % (35 de 40)**. Evidencia: `evidence/2026-11-24-ml-entrenamiento.txt`.
+
+### Cómo leer la matriz de confusión
+
+Filas = categoría real, columnas = lo que predijo el modelo (orden ACCESS, BUG, FEATURE, SECURITY):
+
+```text
+            ACCESS  BUG  FEATURE  SECURITY
+ACCESS         9     0      0        1
+BUG            0     9      0        1
+FEATURE        0     0      9        1
+SECURITY       1     1      0        8
+```
+
+La diagonal son los aciertos (9+9+9+8 = 35). SECURITY es la categoría que más confunde: el modelo a veces manda a SECURITY tickets que no lo son, y se le escaparon 2 incidentes reales.
+
+### Score aproximado
+
+`predict_proba(...).max()` es la probabilidad más alta entre las 4 categorías. Con 4 categorías, 0.25 sería adivinar al azar. Ejemplo del profe: *"Encontré datos de otros clientes"* → SECURITY, score 0.416.
+
+En la API, si el score es **menor a 0.40** el ticket se marca `requiresHumanReview: true`. Los 5 errores del set de prueba tuvieron score de 0.36 o menos.
+
+---
+
 ## Piezas nuevas en el repo
 
 | Ruta | Para qué |

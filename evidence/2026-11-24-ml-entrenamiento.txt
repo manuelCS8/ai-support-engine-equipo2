@@ -1,0 +1,35 @@
+fecha: 2026-11-24T21:23:09Z
+commit base: 678ee89a2fa48305a65a1b7d27cd45fef70fab9e (rama feat/BAM-JI-ml-dataset-200, cambios sin commit)
+dataset: data/tickets.csv (CSV del profe, 200 registros)
+comando: python scripts/train_ml.py
+---
+Registros: 200 | entrenamiento: 160 | prueba: 40
+Por categoría (entrenamiento): {'ACCESS': 40, 'BUG': 40, 'FEATURE': 40, 'SECURITY': 40}
+Por categoría (prueba): {'ACCESS': 10, 'BUG': 10, 'FEATURE': 10, 'SECURITY': 10}
+
+=== classification_report ===
+              precision    recall  f1-score   support
+
+      ACCESS       0.90      0.90      0.90        10
+         BUG       0.90      0.90      0.90        10
+     FEATURE       1.00      0.90      0.95        10
+    SECURITY       0.73      0.80      0.76        10
+
+    accuracy                           0.88        40
+   macro avg       0.88      0.88      0.88        40
+weighted avg       0.88      0.88      0.88        40
+
+=== confusion_matrix (filas = real, columnas = predicho) ===
+Etiquetas: ['ACCESS', 'BUG', 'FEATURE', 'SECURITY']
+[[9 0 0 1]
+ [0 9 0 1]
+ [0 0 9 1]
+ [1 1 0 8]]
+
+Mensaje de ejemplo: 'Encontré datos de otros clientes'
+Categoría: SECURITY
+Score aproximado: 0.416
+
+Accuracy en prueba: 0.8750 (35/40)
+Modelo guardado en models\category_pipeline.joblib
+Métricas en models\metrics.json

@@ -1,17 +1,75 @@
 {
-  "rows": 53,
-  "train": 42,
-  "test": 11,
-  "categories": [
+  "trainedAt": "2026-11-24T21:23:13+00:00",
+  "rows": 200,
+  "train": 160,
+  "test": 40,
+  "testSize": 0.2,
+  "randomState": 42,
+  "labels": [
     "ACCESS",
     "BUG",
     "FEATURE",
     "SECURITY"
   ],
-  "model_path": "models/category_pipeline.joblib",
-  "sample_prediction": {
-    "message": "Alguien entró a mi cuenta sin autorización",
-    "category": "SECURITY"
+  "accuracy": 0.875,
+  "confusionMatrix": [
+    [
+      9,
+      0,
+      0,
+      1
+    ],
+    [
+      0,
+      9,
+      0,
+      1
+    ],
+    [
+      0,
+      0,
+      9,
+      1
+    ],
+    [
+      1,
+      1,
+      0,
+      8
+    ]
+  ],
+  "classificationReport": "              precision    recall  f1-score   support\n\n      ACCESS       0.90      0.90      0.90        10\n         BUG       0.90      0.90      0.90        10\n     FEATURE       1.00      0.90      0.95        10\n    SECURITY       0.73      0.80      0.76        10\n\n    accuracy                           0.88        40\n   macro avg       0.88      0.88      0.88        40\nweighted avg       0.88      0.88      0.88        40\n",
+  "testErrors": [
+    {
+      "message": "La exportación genera un archivo dañado",
+      "expected": "BUG",
+      "predicted": "SECURITY"
+    },
+    {
+      "message": "Alguien está intentando suplantar al equipo de soporte",
+      "expected": "SECURITY",
+      "predicted": "ACCESS"
+    },
+    {
+      "message": "El sistema no reconoce mi nombre de usuario",
+      "expected": "ACCESS",
+      "predicted": "SECURITY"
+    },
+    {
+      "message": "Se publicaron datos internos en una página abierta",
+      "expected": "SECURITY",
+      "predicted": "BUG"
+    },
+    {
+      "message": "Necesitamos integrar el sistema con un lector de códigos",
+      "expected": "FEATURE",
+      "predicted": "SECURITY"
+    }
+  ],
+  "samplePrediction": {
+    "message": "Encontré datos de otros clientes",
+    "category": "SECURITY",
+    "confidence": 0.416
   },
-  "classification_report": "              precision    recall  f1-score   support\n\n      ACCESS       0.75      1.00      0.86         3\n         BUG       1.00      0.33      0.50         3\n     FEATURE       0.00      0.00      0.00         2\n    SECURITY       0.33      0.67      0.44         3\n\n    accuracy                           0.55        11\n   macro avg       0.52      0.50      0.45        11\nweighted avg       0.57      0.55      0.49        11\n"
+  "modelPath": "models/category_pipeline.joblib"
 }

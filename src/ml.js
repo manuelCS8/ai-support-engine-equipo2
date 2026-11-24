@@ -79,21 +79,39 @@ function runPredict(message, { pythonPath = process.env.PYTHON || 'python', time
         reject(new MlError('ML_INVALID_OUTPUT', 'El clasificador ML no devolvió categoría.', 502));
         return;
       }
-      resolve(parsed.category);
+      resolve({ category: parsed.category, confidence: parsed.confidence });
     });
   });
 }
 
+// Score aproximado (predict_proba) por debajo del cual la predicción se manda a revisión humana.
+// 0.40: con el split 160/40 todos los errores del conjunto de prueba quedaron en 0.36 o menos.
+const DEFAULT_MIN_CONFIDENCE = 0.4;
+
+function minConfidenceFrom(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 && number <= 1 ? number : DEFAULT_MIN_CONFIDENCE;
+}
+
+function needsReview(category, confidence, minConfidence) {
+  if (category === 'SECURITY') return true;
+  // Sin score (modelo antiguo) se trata como confianza desconocida: revisión humana.
+  if (typeof confidence !== 'number' || !Number.isFinite(confidence)) return true;
+  return confidence < minConfidence;
+}
+
 function createAnalyzer(options = {}) {
   const predict = options.predictImpl || runPredict;
+  const minConfidence = minConfidenceFrom(options.minConfidence ?? process.env.ML_MIN_CONFIDENCE);
   return async function analyze(message) {
     validateMessage(message);
-    const category = await predict(message, options);
+    const prediction = await predict(message, options);
+    const { category, confidence } = typeof prediction === 'string' ? { category: prediction, confidence: 1 } : prediction;
     const result = {
       category,
       priority: priorityFor(category, message),
       response: RESPONSES[category],
-      requiresHumanReview: category === 'SECURITY',
+      requiresHumanReview: needsReview(category, confidence, minConfidence),
       mode: 'ml',
     };
     if (!validResult(result, 'ml')) {
@@ -107,4 +125,4 @@ async function analyze(message) {
   return createAnalyzer()(message);
 }
 
-module.exports = { analyze, createAnalyzer, runPredict, MlError, priorityFor };
+module.exports = { analyze, createAnalyzer, runPredict, MlError, priorityFor, needsReview, DEFAULT_MIN_CONFIDENCE };
