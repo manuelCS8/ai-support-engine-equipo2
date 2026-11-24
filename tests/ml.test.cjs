@@ -3,7 +3,37 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { once } = require('node:events');
 const { createServer } = require('../src/server');
-const { createAnalyzer, MlError, priorityFor } = require('../src/ml');
+const { createAnalyzer, MlError, priorityFor, needsReview, DEFAULT_MIN_CONFIDENCE } = require('../src/ml');
+
+test('Score bajo del modelo manda la predicción a revisión humana', async () => {
+  const analyze = createAnalyzer({ predictImpl: async () => ({ category: 'BUG', confidence: 0.33 }) });
+  const result = await analyze('Ayuda, tengo un problema');
+  assert.equal(result.category, 'BUG');
+  assert.equal(result.requiresHumanReview, true);
+  assert.deepEqual(Object.keys(result).sort(), ['category', 'mode', 'priority', 'requiresHumanReview', 'response']);
+});
+
+test('Score suficiente no exige revisión salvo SECURITY', async () => {
+  const confident = await createAnalyzer({ predictImpl: async () => ({ category: 'FEATURE', confidence: 0.57 }) })('Me gustaría agregar modo oscuro');
+  assert.equal(confident.requiresHumanReview, false);
+  const security = await createAnalyzer({ predictImpl: async () => ({ category: 'SECURITY', confidence: 0.95 }) })('Detecté una vulnerabilidad');
+  assert.equal(security.requiresHumanReview, true);
+});
+
+test('needsReview usa el umbral configurado y trata score ausente como desconocido', () => {
+  assert.equal(DEFAULT_MIN_CONFIDENCE, 0.4);
+  assert.equal(needsReview('ACCESS', 0.39, 0.4), true);
+  assert.equal(needsReview('ACCESS', 0.4, 0.4), false);
+  assert.equal(needsReview('ACCESS', undefined, 0.4), true);
+  assert.equal(needsReview('ACCESS', 0.6, 0.7), true);
+});
+
+test('minConfidence inválido vuelve al umbral por defecto', async () => {
+  for (const minConfidence of [-1, 2, 'abc']) {
+    const result = await createAnalyzer({ minConfidence, predictImpl: async () => ({ category: 'BUG', confidence: 0.45 }) })('Error al guardar');
+    assert.equal(result.requiresHumanReview, false);
+  }
+});
 
 async function running(t, options = {}) {
   const server = createServer(options);

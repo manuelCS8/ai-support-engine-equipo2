@@ -1,0 +1,12 @@
+fecha: 2026-11-24T21:23:13Z
+commit base: 678ee89a2fa48305a65a1b7d27cd45fef70fab9e
+comando: python scripts/predict_ml.py "Encontré datos de otros clientes"
+{"category": "SECURITY", "confidence": 0.416}
+comando: python scripts/predict_ml.py "No puedo iniciar sesión"
+{"category": "ACCESS", "confidence": 0.454}
+comando: python scripts/predict_ml.py "Me gustaría agregar modo oscuro"
+{"category": "FEATURE", "confidence": 0.573}
+comando: python scripts/predict_ml.py "La aplicación se cierra al abrir una imagen"
+{"category": "BUG", "confidence": 0.565}
+comando: python scripts/predict_ml.py "Ayuda, tengo un problema"
+{"category": "SECURITY", "confidence": 0.336}

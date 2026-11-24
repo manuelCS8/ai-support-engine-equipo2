@@ -35,21 +35,30 @@ Puede iniciar el prototipo antes de configurar Gemini. El modo tradicional estar
 
 ## Motor Machine Learning (corrección del profesor)
 
-Integra el enfoque supervisado con CSV de exactamente dos columnas (`Mensaje`, `Categoría`), como indicó el profesor. El proyecto principal sigue en Node (opción B): Python entrena/predice y la API lo consume.
+Integra el enfoque supervisado con el CSV del profesor: **200 registros** de dos columnas (`Mensaje`, `Categoría`), 50 por categoría. El proyecto principal sigue en Node (opción B): Python entrena/predice y la API lo consume.
 
 ```powershell
 python -m pip install -r requirements-ml.txt
 npm.cmd run ml:train
-python scripts/predict_ml.py "Alguien entró a mi cuenta sin autorización"
+python scripts/predict_ml.py "Encontré datos de otros clientes"
 ```
 
-Luego, con el servidor en marcha:
+`scripts/train_ml.py` sigue el código del profesor:
+
+1. Divide el CSV con `train_test_split(test_size=0.2, stratify=category, random_state=42)`: **160 registros para entrenar y 40 para probar** (40/10 por categoría).
+2. Entrena `Pipeline([("tfidf", TfidfVectorizer(ngram_range=(1, 2))), ("classifier", LogisticRegression(max_iter=1000))])`.
+3. Evalúa los 40 de prueba con `classification_report` y `confusion_matrix` (filas = categoría real, columnas = predicha).
+4. Predice un mensaje de ejemplo y muestra su **score aproximado** (`predict_proba(...).max()`).
+
+Guarda el modelo en `models/category_pipeline.joblib` y las métricas (accuracy, matriz, reporte, errores de prueba) en `models/metrics.json`. Resultado real del último entrenamiento: **accuracy 87.5 % (35/40)**; ver [`evidence/2026-11-24-ml-entrenamiento.txt`](evidence/2026-11-24-ml-entrenamiento.txt).
+
+`predict_ml.py` devuelve `{"category": "...", "confidence": 0.416}`. Luego, con el servidor en marcha:
 
 ```json
-{ "message": "Alguien entró a mi cuenta sin autorización", "mode": "ml" }
+{ "message": "Encontré datos de otros clientes", "mode": "ml" }
 ```
 
-El modelo predice `category`. Prioridad, respuesta plantilla y `requiresHumanReview` se completan en `src/ml.js` para cumplir el mismo contrato JSON. Dataset: `data/tickets.csv`. Modelo: `models/category_pipeline.joblib`. Guía corta del equipo: [`docs/PARA-EL-EQUIPO-ML.md`](docs/PARA-EL-EQUIPO-ML.md).
+El modelo predice `category`. Prioridad y respuesta plantilla se completan en `src/ml.js` para cumplir el mismo contrato JSON de cinco campos (el score no se agrega a la respuesta para no romper el contrato). `requiresHumanReview` es `true` si la categoría es SECURITY **o si el score es menor a 0.40** (configurable con `ML_MIN_CONFIDENCE` en `.env`). Guía corta del equipo: [`docs/PARA-EL-EQUIPO-ML.md`](docs/PARA-EL-EQUIPO-ML.md).
 
 ## Uso de la API
 
@@ -102,13 +111,13 @@ La exactitud exige contrato válido y coincidencia de categoría, prioridad y re
 
 El motor tradicional normaliza acentos, espacios y mayúsculas. Usa precedencia SECURITY > ACCESS > BUG > FEATURE. ACCESS/BUG suelen ser MEDIUM, mejoras LOW, bloqueos y seguridad HIGH, pérdidas/fugas de datos y caídas generales CRITICAL. Sin contexto devuelve BUG/MEDIUM provisional y revisión humana. No interpreta toda negación o ironía.
 
-El motor ML lee un CSV (`Mensaje`, `Categoría`), entrena TF-IDF + Logistic Regression y predice solo la categoría. No reemplaza a Gemini ni a las reglas: es un tercer modo. Con pocos datos el accuracy puede variar; el dataset incluido es didáctico, no un corpus de producción. SECURITY del ML también marca revisión humana.
+El motor ML lee un CSV (`Mensaje`, `Categoría`), entrena TF-IDF + Logistic Regression y predice solo la categoría. No reemplaza a Gemini ni a las reglas: es un tercer modo. Con 200 registros los scores son bajos (en prueba, entre 0.28 y 0.65), por eso se usan como señal para pedir revisión y no como probabilidad exacta. El dataset es didáctico, no un corpus de producción; el accuracy de 40 casos no generaliza. SECURITY del ML también marca revisión humana, pero a diferencia del generativo el ML no tiene defensa por reglas: puede clasificar un incidente de seguridad como otra categoría.
 
 El generativo separa instrucciones del sistema y ticket no confiable, solicita un esquema JSON y valida los cinco campos en la respuesta. Rechaza respuestas truncadas, bloqueadas o mal formadas. Una defensa de reglas evita que señales conocidas de seguridad se desescalen: SECURITY siempre requiere revisión y mínimo HIGH. Esta defensa no sustituye la generación: si Gemini falla, la solicitud falla. La respuesta profesional procede del modelo, cuya calidad puede variar; las reglas no detectan todos los incidentes ni garantizan resistencia absoluta a manipulación.
 
 El servidor de la API no guarda tickets ni registra sus contenidos; el comparador sí guarda los casos y resultados de evaluación en `results/`. La interfaz usa texto seguro para mostrar respuestas, no HTML del modelo. `.env` está excluido del repositorio. La interfaz y API se sirven en localhost; el motor generativo envía el ticket a Google por internet. No envíe datos personales, contraseñas o secretos. No exponga el prototipo a internet sin autenticación, límites de uso y una revisión adicional.
 
-Configuración en `.env`: HOST y PORT para el servidor; GEMINI_API_KEY para el generativo; GEMINI_MODEL (por defecto `gemini-3.8-flash`); GEMINI_TIMEOUT_MS (por defecto 60000, entre 1 y 300000 milisegundos). La URL del proveedor está fijada a Google para evitar que una configuración accidental envíe la clave a otro destino.
+Configuración en `.env`: HOST y PORT para el servidor; GEMINI_API_KEY para el generativo; GEMINI_MODEL (por defecto `gemini-3.8-flash`); GEMINI_TIMEOUT_MS (por defecto 60000, entre 1 y 300000 milisegundos); ML_MIN_CONFIDENCE (por defecto 0.4, entre 0 y 1); ML_TIMEOUT_MS y PYTHON para el motor ML. La URL del proveedor está fijada a Google para evitar que una configuración accidental envíe la clave a otro destino.
 
 Documentación oficial: [Gemini API](https://ai.google.dev/gemini-api/docs), [salidas estructuradas](https://ai.google.dev/gemini-api/docs/structured-output), [referencia generateContent](https://ai.google.dev/api/generate-content), [modelos disponibles](https://ai.google.dev/gemini-api/docs/models).
 
